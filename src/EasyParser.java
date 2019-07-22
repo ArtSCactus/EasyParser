@@ -1,23 +1,27 @@
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Arrays;
-import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class EasyParser {
     private FileWriter writeThread;
     private FileReader readThread;
     private BufferedReader scan;
     private String filePath;
-    private Pattern startTamplate = Pattern.compile("\\<\\w+\\>", Pattern.CASE_INSENSITIVE);
+    private Pattern startTamplate = Pattern.compile("<\\w+[\\s+|>]", Pattern.CASE_INSENSITIVE);
     private Pattern endTamplate = Pattern.compile("\\<\\/\\w+\\>", Pattern.CASE_INSENSITIVE);
-    public void startTag(String tag){};
-    public void endTag(String tag){};
-    public void value(String value){};
+    private Pattern attrTamplate = Pattern.compile("\\w+\\=\\\"\\w+\\\"", Pattern.CASE_INSENSITIVE);
+
+    public void startTag(String tag) {
+    };
+
+    public void endTag(String tag) {
+    };
+
+    public void value(String value) {
+    };
+
+    public void attribute(String attrName, String attrValue) {
+    };
 
     public EasyParser(String filePath) throws IOException {
         this.filePath = filePath;
@@ -31,37 +35,52 @@ public class EasyParser {
         scan = new BufferedReader(readThread);
     }
 
-    public void startPars() throws IOException {
-        List<String> rows = new ArrayList<String>();
-        Matcher  matcher;
-     while (scan.ready()) {
-         matcher = startTamplate.matcher(scan.readLine());
-         while (matcher.find()) {
-             rows.add(matcher.group());
-             int start = matcher.start();
-             int end = matcher.end();
-             System.out.println("Найдено совпадение " +matcher.group()+" " + " с " + start + " по " + (end - 1) + " позицию");
-             startTag(matcher.group());
-         }
-         matcher = endTamplate.matcher(scan.readLine());
-         while (matcher.find()) {
-             rows.add(matcher.group());
-             int start = matcher.start();
-             int end = matcher.end();
-             System.out.println("Найдено совпадение " +matcher.group()+" " + " с " + start + " по " + (end - 1) + " позицию");
-             endTag(matcher.group());
-         }
+    private void devInfo(Matcher matcher) {
+        int start = matcher.start();
+        int end = matcher.end();
+        System.out.println("Match found " + matcher.group() + " " + " from " + start + " to " + (end - 1) + " position");
+    }
 
-     }
-       }
+    public void startPars() throws IOException {
+        Matcher matcher;
+        Matcher attrFinder;
+        Matcher endTagMatcher;
+        String currentLine;
+        while (scan.ready()) {
+            currentLine = scan.readLine();
+            matcher = startTamplate.matcher(currentLine);
+            attrFinder = attrTamplate.matcher(currentLine);
+            endTagMatcher = endTamplate.matcher(currentLine);
+            while (matcher.find()) {
+                devInfo(matcher);
+                startTag(matcher.group().replaceAll("<|>|/", ""));
+
+                while (attrFinder.find()) {
+                    devInfo(attrFinder);
+                    String[] nameAndValue = attrFinder.group().split("=");
+                    attribute(nameAndValue[0], nameAndValue[1].replaceAll("\\\"", ""));
+                }
+            }
+            while (endTagMatcher.find()) {
+                endTag(endTagMatcher.group().replaceAll("<|>|/", ""));
+            }
+        }
+
+    }
+
 
     public static void main(String[] args) throws Exception {
-        EasyParser parser = new EasyParser("src/test.txt"){
-            public void startTag(String tag){
-                System.out.println("Open tag: "+tag);
+        EasyParser parser = new EasyParser("src/test.xml") {
+            public void startTag(String tag) {
+                System.out.println("Open tag: " + tag);
             }
-            public void endTag(String tag){
-                System.out.println("Close tag: "+tag);
+
+            public void attribute(String attrName, String attrValue) {
+                System.out.println("Attribute name: " + attrName + " Value: " + attrValue);
+            }
+
+            public void endTag(String tag) {
+                System.out.println("Close tag: " + tag);
             }
         };
         parser.startPars();

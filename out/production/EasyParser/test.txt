@@ -1,4 +1,4 @@
-<Test>
+<Test attr="attrTest">
 </Test>
 Test
 Test
