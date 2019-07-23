@@ -7,20 +7,22 @@ public class EasyParser {
     private FileReader readThread;
     private BufferedReader scan;
     private String filePath;
-    private Pattern startTamplate = Pattern.compile("<\\w+[\\s+|>]", Pattern.CASE_INSENSITIVE);
+    private Pattern startTamplate = Pattern.compile("<\\w+(\\s+|>)", Pattern.CASE_INSENSITIVE);
     private Pattern endTamplate = Pattern.compile("\\<\\/\\w+\\>", Pattern.CASE_INSENSITIVE);
-    private Pattern attrTamplate = Pattern.compile("\\w+\\=\\\"\\w+\\\"", Pattern.CASE_INSENSITIVE);
-
+    private Pattern attrTamplate = Pattern.compile("\\w+\\s*=\\s*\\\"\\w+\\\"", Pattern.CASE_INSENSITIVE);
+    private Pattern tagValueTamplate = Pattern.compile("(>\\s*[^<>]+\\s*<|>\\s*[^<>]+\\s*\n|[^<>]\\s*<)", Pattern.CASE_INSENSITIVE);
     public void startTag(String tag) {
     };
 
     public void endTag(String tag) {
     };
 
-    public void value(String value) {
+    public void tagValue(String value) {
     };
 
     public void attribute(String attrName, String attrValue) {
+    };
+    public void attribute(String tagName, String attrName, String attrValue){
     };
 
     public EasyParser(String filePath) throws IOException {
@@ -45,24 +47,28 @@ public class EasyParser {
         Matcher matcher;
         Matcher attrFinder;
         Matcher endTagMatcher;
+        Matcher tagValue;
         String currentLine;
         while (scan.ready()) {
             currentLine = scan.readLine();
             matcher = startTamplate.matcher(currentLine);
             attrFinder = attrTamplate.matcher(currentLine);
             endTagMatcher = endTamplate.matcher(currentLine);
+            tagValue=tagValueTamplate.matcher(currentLine);
             while (matcher.find()) {
-                devInfo(matcher);
                 startTag(matcher.group().replaceAll("<|>|/", ""));
-
                 while (attrFinder.find()) {
-                    devInfo(attrFinder);
                     String[] nameAndValue = attrFinder.group().split("=");
-                    attribute(nameAndValue[0], nameAndValue[1].replaceAll("\\\"", ""));
+                    attribute(matcher.group().replaceAll("<|>|\\s", ""), nameAndValue[0], nameAndValue[1].replaceAll("\\\"", ""));
                 }
+            }
+            while (tagValue.find()){
+                tagValue(tagValue.group().replaceAll("\\>+|\\<+",""));
+                break;
             }
             while (endTagMatcher.find()) {
                 endTag(endTagMatcher.group().replaceAll("<|>|/", ""));
+                break;
             }
         }
 
@@ -70,15 +76,19 @@ public class EasyParser {
 
 
     public static void main(String[] args) throws Exception {
+        System.setProperty("console.encoding","Cp866");
         EasyParser parser = new EasyParser("src/test.xml") {
             public void startTag(String tag) {
                 System.out.println("Open tag: " + tag);
             }
 
-            public void attribute(String attrName, String attrValue) {
-                System.out.println("Attribute name: " + attrName + " Value: " + attrValue);
+            public void attribute(String tagName, String attrName, String attrValue) {
+                System.out.println("Tag name: "+tagName+" attr name: " + attrName + " Value: " + attrValue);
             }
 
+            public void tagValue(String value){
+                System.out.println("Tag value: "+value);
+            }
             public void endTag(String tag) {
                 System.out.println("Close tag: " + tag);
             }
